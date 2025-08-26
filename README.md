@@ -10,6 +10,7 @@
 
 - 🔍 **邮件搜索**: 支持按文件夹、时间范围和关键词搜索邮件
 - 📧 **邮件内容**: 批量获取邮件完整内容，包括文本、HTML和附件信息
+- 📅 **日期工具**: 获取当前日期和时间，支持多种格式和时区
 - 📁 **文件夹管理**: 获取和浏览所有邮件文件夹
 - 🔗 **IMAP支持**: 兼容所有标准IMAP服务器
 - ⚡ **快速执行**: 通过npx直接运行，无需全局安装
@@ -135,7 +136,7 @@ IMAP_SECURE=true
 }
 ```
 
-### 2. get_email_contents 🆕
+### 2. get_email_contents
 根据消息ID批量获取邮件的完整内容。
 
 **参数：**
@@ -158,12 +159,61 @@ IMAP_SECURE=true
 }
 ```
 
-### 3. list_mailboxes
+### 3. get_email_contents_by_uids 🆕
+根据UID批量获取邮件的完整内容，性能更佳。
+
+**参数：**
+- `uids` (必需): UID和文件夹对象数组
+
+**性能优势：**
+- 直接通过UID获取，无需搜索步骤
+- 单次IMAP请求批量获取多封邮件
+- 按文件夹分组优化处理
+
+**示例：**
+```json
+{
+  "uids": [
+    {"uid": 12345, "folder": "INBOX"},
+    {"uid": 12346, "folder": "INBOX"},
+    {"uid": 789, "folder": "Sent"}
+  ]
+}
+```
+
+**注意：** UID可以通过 `search_emails` 工具获得，然后用此工具高效获取邮件内容。
+
+### 4. list_mailboxes
 获取所有可用的邮件文件夹列表。
 
 **参数：** 无
 
-### 4. test_connection
+### 5. get_current_date
+获取当前日期和时间信息，可用于设置邮件搜索的时间范围。
+
+**参数：**
+- `format` (可选): 日期格式
+  - `date`: YYYY-MM-DD 格式（默认）
+  - `datetime`: YYYY-MM-DD HH:mm:ss 格式
+  - `iso`: ISO 8601 格式
+  - `timestamp`: Unix时间戳
+- `timezone` (可选): 时区设置（如 Asia/Shanghai 或 +08:00）
+- `daysOffset` (可选): 日期偏移天数，正数为未来，负数为过去
+
+**示例：**
+```json
+{
+  "format": "date",
+  "daysOffset": -7
+}
+```
+
+**用途：**
+- 获取今天的日期用于邮件搜索
+- 计算几天前/后的日期
+- 设置邮件搜索的时间范围
+
+### 6. test_connection
 测试IMAP连接是否正常。
 
 **参数：** 无
@@ -207,9 +257,51 @@ npm start
 - 缩小时间范围
 - 降低结果限制数量
 
+## 性能优化建议
+
+### 邮件内容获取性能对比
+
+1. **推荐方式**：使用 `get_email_contents_by_uids`
+   - ✅ 直接通过UID获取，无搜索开销
+   - ✅ 单次IMAP请求批量处理
+   - ✅ 按文件夹自动分组优化
+   - ⚡ 性能提升显著
+
+2. **传统方式**：使用 `get_email_contents`  
+   - ❌ 需要先搜索MessageID
+   - ❌ 每个MessageID单独处理
+   - ❌ 多次IMAP请求
+
+### 最佳实践工作流
+
+```
+1. 使用 search_emails 获取邮件列表（包含UID）
+   ↓
+2. 使用 get_email_contents_by_uids 批量获取内容
+   ↓  
+3. 高效获取完整邮件数据
+```
+
 ## 版本历史
 
-### v1.1.0 (最新)
+### v1.3.0 (最新)
+- 🚀 新增 `get_email_contents_by_uids` 工具，基于UID批量获取邮件内容
+- ⚡ 大幅优化批量邮件获取性能，单次IMAP请求处理多封邮件
+- 🔧 重构邮件内容获取机制，支持按文件夹分组处理
+- 📈 提供性能对比和最佳实践指南
+
+### v1.2.0
+- 🆕 新增 `get_current_date` 工具，获取当前日期和时间
+- ⏰ 支持多种日期格式（date, datetime, iso, timestamp）
+- 🌍 支持时区设置和日期偏移计算
+- 📅 便于设置邮件搜索的时间范围
+
+### v1.1.1
+- 📚 更新README文档，添加详细功能说明
+- 🔗 添加GitHub仓库和License信息
+- 📦 完善包发布配置
+
+### v1.1.0
 - 🆕 新增 `get_email_contents` 工具，支持批量获取邮件完整内容
 - ✨ 支持获取邮件的文本和HTML内容
 - 🔧 改进邮件内容解析功能

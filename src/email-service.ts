@@ -225,19 +225,31 @@ export class EmailService {
     }
   }
 
-  private fetchEmailContentByUID(uid: number, folder: string): Promise<EmailContent | null> {
+  private fetchEmailContentsByUIDs(uids: number[], folder: string): Promise<EmailContent[]> {
     return new Promise((resolve, reject) => {
-      const fetch = this.imap!.fetch([uid], {
+      if (uids.length === 0) {
+        resolve([]);
+        return;
+      }
+
+      const fetch = this.imap!.fetch(uids, {
         bodies: '',
         struct: true,
       });
 
-      let emailContent: Partial<EmailContent> = {
-        uid,
-        folder,
-      };
+      const emailContents: Map<number, Partial<EmailContent>> = new Map();
+      
+      // 初始化每个UID的基础信息
+      uids.forEach(uid => {
+        emailContents.set(uid, {
+          uid,
+          folder,
+          headers: {},
+        });
+      });
 
       fetch.on('message', (msg: any, seqno: number) => {
+        let currentUID = 0;
         let headers: any = {};
         let textContent = '';
         let htmlContent = '';
@@ -262,28 +274,34 @@ export class EmailService {
         });
 
         msg.once('attributes', (attrs: any) => {
-          emailContent.flags = attrs.flags || [];
-          
-          // 解析邮件结构以获取内容
-          if (attrs.struct) {
-            this.parseEmailStructure(attrs.struct, emailContent);
+          currentUID = attrs.uid;
+          const emailContent = emailContents.get(currentUID);
+          if (emailContent) {
+            emailContent.flags = attrs.flags || [];
+            
+            // 解析邮件结构以获取内容
+            if (attrs.struct) {
+              this.parseEmailStructure(attrs.struct, emailContent);
+            }
           }
         });
 
         msg.once('end', () => {
-          emailContent = {
-            ...emailContent,
-            messageId: headers['message-id']?.[0] || '',
-            subject: headers.subject?.[0] || '',
-            from: headers.from?.[0] || '',
-            to: headers.to || [],
-            cc: headers.cc || [],
-            bcc: headers.bcc || [],
-            date: new Date(headers.date?.[0] || ''),
-            textContent: textContent || undefined,
-            htmlContent: htmlContent || undefined,
-            headers: this.flattenHeaders(headers),
-          };
+          const emailContent = emailContents.get(currentUID);
+          if (emailContent) {
+            Object.assign(emailContent, {
+              messageId: headers['message-id']?.[0] || '',
+              subject: headers.subject?.[0] || '',
+              from: headers.from?.[0] || '',
+              to: headers.to || [],
+              cc: headers.cc || [],
+              bcc: headers.bcc || [],
+              date: new Date(headers.date?.[0] || ''),
+              textContent: textContent || undefined,
+              htmlContent: htmlContent || undefined,
+              headers: this.flattenHeaders(headers),
+            });
+          }
         });
       });
 
@@ -292,7 +310,10 @@ export class EmailService {
       });
 
       fetch.once('end', () => {
-        resolve(emailContent as EmailContent);
+        const results = Array.from(emailContents.values())
+          .filter(content => content.messageId) // 只返回成功获取到内容的邮件
+          .map(content => content as EmailContent);
+        resolve(results);
       });
     });
   }
@@ -320,6 +341,42 @@ export class EmailService {
     return flattened;
   }
 
+  async getEmailContentsByUids(uids: { uid: number; folder: string }[]): Promise<EmailContent[]> {
+    try {
+      if (!this.imap) {
+        await this.connect();
+      }
+
+      // 按文件夹分组UID
+      const uidsByFolder = new Map<string, number[]>();
+      uids.forEach(({ uid, folder }) => {
+        if (!uidsByFolder.has(folder)) {
+          uidsByFolder.set(folder, []);
+        }
+        uidsByFolder.get(folder)!.push(uid);
+      });
+
+      const allResults: EmailContent[] = [];
+
+      // 批量处理每个文件夹的邮件
+      for (const [folder, folderUids] of uidsByFolder) {
+        try {
+          await this.openBox(folder);
+          const contents = await this.fetchEmailContentsByUIDs(folderUids, folder);
+          allResults.push(...contents);
+        } catch (err) {
+          console.warn(`跳过文件夹 ${folder}:`, err);
+        }
+      }
+
+      return allResults;
+
+    } finally {
+      this.disconnect();
+    }
+  }
+
+  // 保持向后兼容性的方法
   async getEmailContentsByMessageIds(messageIds: string[]): Promise<EmailContent[]> {
     try {
       if (!this.imap) {
@@ -338,10 +395,11 @@ export class EmailService {
             try {
               const uids = await this.searchMessages([['HEADER', 'MESSAGE-ID', messageId]]);
               
-              for (const uid of uids) {
-                const content = await this.fetchEmailContentByUID(uid, folder);
-                if (content && content.messageId === messageId) {
-                  results.push(content);
+              if (uids.length > 0) {
+                const contents = await this.fetchEmailContentsByUIDs(uids, folder);
+                const matchingContent = contents.find(content => content.messageId === messageId);
+                if (matchingContent) {
+                  results.push(matchingContent);
                   break; // 找到了就跳出，避免重复
                 }
               }

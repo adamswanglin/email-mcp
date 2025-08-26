@@ -94,6 +94,59 @@ export class EmailMCPServer {
               required: ['messageIds'],
             },
           },
+          {
+            name: 'get_email_contents_by_uids',
+            description: '根据UID批量获取邮件的完整内容，性能更佳，适合已知UID的场景',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                uids: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      uid: {
+                        type: 'number',
+                        description: '邮件的UID'
+                      },
+                      folder: {
+                        type: 'string',
+                        description: '邮件所在的文件夹'
+                      }
+                    },
+                    required: ['uid', 'folder']
+                  },
+                  description: '要获取内容的邮件UID和文件夹列表',
+                  minItems: 1,
+                },
+              },
+              required: ['uids'],
+            },
+          },
+          {
+            name: 'get_current_date',
+            description: '获取当前日期和时间信息，可用于设置邮件搜索的时间范围',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                format: {
+                  type: 'string',
+                  enum: ['iso', 'date', 'datetime', 'timestamp'],
+                  description: '日期格式：iso(ISO字符串), date(YYYY-MM-DD), datetime(YYYY-MM-DD HH:mm:ss), timestamp(时间戳)',
+                  default: 'date',
+                },
+                timezone: {
+                  type: 'string',
+                  description: '时区偏移，如 +08:00 或时区名称如 Asia/Shanghai',
+                },
+                daysOffset: {
+                  type: 'number',
+                  description: '日期偏移天数，正数为未来，负数为过去',
+                  default: 0,
+                },
+              },
+            },
+          },
         ],
       };
     });
@@ -198,6 +251,126 @@ export class EmailMCPServer {
                     foundCount: contents.length,
                     contents,
                   }, null, 2),
+                },
+              ],
+            };
+          }
+
+          case 'get_email_contents_by_uids': {
+            if (!args?.uids || !Array.isArray(args.uids)) {
+              throw new McpError(
+                ErrorCode.InvalidParams,
+                '必须提供uids数组参数'
+              );
+            }
+
+            // 验证UID格式
+            const uids = args.uids as { uid: number; folder: string }[];
+            for (const item of uids) {
+              if (typeof item.uid !== 'number' || typeof item.folder !== 'string') {
+                throw new McpError(
+                  ErrorCode.InvalidParams,
+                  'uids数组中每个元素必须包含uid(number)和folder(string)字段'
+                );
+              }
+            }
+
+            const contents = await this.emailService!.getEmailContentsByUids(uids);
+            
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify({
+                    summary: `成功获取 ${contents.length} 封邮件的内容（共查询 ${uids.length} 个UID）`,
+                    requestedCount: uids.length,
+                    foundCount: contents.length,
+                    performance: '使用UID直接获取，性能更优',
+                    contents,
+                  }, null, 2),
+                },
+              ],
+            };
+          }
+
+          case 'get_current_date': {
+            const format = (args?.format as string) || 'date';
+            const daysOffset = (args?.daysOffset as number) || 0;
+            const timezone = args?.timezone as string;
+
+            const now = new Date();
+            
+            // 应用日期偏移
+            if (daysOffset !== 0) {
+              now.setDate(now.getDate() + daysOffset);
+            }
+
+            let formattedDate: string;
+            let description: string;
+
+            switch (format) {
+              case 'iso':
+                formattedDate = now.toISOString();
+                description = 'ISO 8601格式';
+                break;
+              case 'datetime':
+                formattedDate = now.toLocaleString('zh-CN', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit',
+                  hour12: false,
+                }).replace(/\//g, '-');
+                description = '日期时间格式 (YYYY-MM-DD HH:mm:ss)';
+                break;
+              case 'timestamp':
+                formattedDate = now.getTime().toString();
+                description = 'Unix时间戳（毫秒）';
+                break;
+              case 'date':
+              default:
+                formattedDate = now.toISOString().split('T')[0];
+                description = '日期格式 (YYYY-MM-DD)';
+                break;
+            }
+
+            const result = {
+              currentDate: formattedDate,
+              format: format,
+              description: description,
+              timezone: timezone || '本地时区',
+              daysOffset: daysOffset,
+              usage: {
+                searchSince: daysOffset === 0 ? '用于搜索今天之后的邮件' : `用于搜索${Math.abs(daysOffset)}天${daysOffset > 0 ? '后' : '前'}的邮件`,
+                searchBefore: '可以作为邮件搜索的时间上限',
+              },
+            };
+
+            if (timezone) {
+              try {
+                const timeZoneDate = new Intl.DateTimeFormat('zh-CN', {
+                  timeZone: timezone,
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit',
+                  hour12: false,
+                }).format(now);
+                result.timezone = `${timezone} (${timeZoneDate})`;
+              } catch (err) {
+                result.timezone = `${timezone} (时区无效，使用本地时区)`;
+              }
+            }
+            
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2),
                 },
               ],
             };
