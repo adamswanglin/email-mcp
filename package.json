@@ -1,6 +1,6 @@
 {
   "name": "@adamswanglin/email-mcp",
-  "version": "1.5.1",
+  "version": "1.5.3",
   "description": "MCP服务：提供IMAP协议的邮件查询能力",
   "main": "dist/index.js",
   "type": "module",

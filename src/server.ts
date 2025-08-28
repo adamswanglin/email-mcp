@@ -184,19 +184,24 @@ export class EmailMCPServer {
           }
 
           case 'list_mailboxes': {
-            const mailboxes = await this.emailService!.getMailboxes();
-            
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: JSON.stringify({
-                    summary: `找到 ${mailboxes.length} 个邮件文件夹`,
-                    mailboxes,
-                  }, null, 2),
-                },
-              ],
-            };
+            try {
+              const mailboxes = await this.emailService!.getMailboxes();
+              
+              return {
+                content: [
+                  {
+                    type: 'text',
+                    text: JSON.stringify({
+                      summary: `找到 ${mailboxes.length} 个邮件文件夹`,
+                      mailboxes,
+                    }, null, 2),
+                  },
+                ],
+              };
+            } finally {
+              // 确保连接被正确关闭
+              this.emailService!.disconnect();
+            }
           }
 
           case 'test_connection': {

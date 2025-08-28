@@ -37,8 +37,13 @@ export class EmailService {
   }
 
   async getMailboxes(): Promise<string[]> {
-    return new Promise((resolve, reject) => {
-      this.imap!.getBoxes((err: Error | null, boxes: any) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        if (!this.imap) {
+          await this.connect();
+        }
+        
+        this.imap!.getBoxes((err: Error | null, boxes: any) => {
         if (err) {
           reject(err);
           return;
@@ -59,42 +64,66 @@ export class EmailService {
 
         extractBoxNames(boxes);
         resolve(mailboxes);
-      });
+        });
+      } catch (error) {
+        reject(error);
+      }
     });
   }
 
   async openBox(boxName: string): Promise<any> {
-    return new Promise((resolve, reject) => {
-      this.imap!.openBox(boxName, true, (err: Error | null) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        if (!this.imap) {
+          await this.connect();
+        }
+        
+        this.imap!.openBox(boxName, true, (err: Error | null) => {
         if (err) {
           reject(err);
         } else {
           resolve(true);
         }
-      });
+        });
+      } catch (error) {
+        reject(error);
+      }
     });
   }
 
   async searchMessages(criteria: any[]): Promise<number[]> {
-    return new Promise((resolve, reject) => {
-      this.imap!.search(criteria, (err: Error | null, uids: number[]) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        if (!this.imap) {
+          await this.connect();
+        }
+        
+        this.imap!.search(criteria, (err: Error | null, uids: number[]) => {
         if (err) {
           reject(err);
         } else {
           resolve(uids || []);
         }
-      });
+        });
+      } catch (error) {
+        reject(error);
+      }
     });
   }
 
   async fetchMessages(uids: number[], options?: any): Promise<EmailMessage[]> {
-    return new Promise((resolve, reject) => {
-      if (uids.length === 0) {
-        resolve([]);
-        return;
-      }
+    return new Promise(async (resolve, reject) => {
+      try {
+        if (uids.length === 0) {
+          resolve([]);
+          return;
+        }
 
-      const fetch = this.imap!.fetch(uids, {
+        if (!this.imap) {
+          await this.connect();
+        }
+
+        const fetch = this.imap!.fetch(uids, {
         bodies: 'HEADER.FIELDS (FROM SUBJECT DATE)',
         struct: true,
         envelope: true,
@@ -142,6 +171,9 @@ export class EmailService {
       fetch.once('end', () => {
         resolve(messages);
       });
+      } catch (error) {
+        reject(error);
+      }
     });
   }
 
@@ -220,14 +252,20 @@ export class EmailService {
   }
 
   private async fetchEmailContentsByUIDs(uids: number[], folder: string): Promise<EmailContent[]> {
-    return new Promise((resolve, reject) => {
-      if (uids.length === 0) {
-        resolve([]);
-        return;
-      }
+    return new Promise(async (resolve, reject) => {
+      try {
+        if (uids.length === 0) {
+          resolve([]);
+          return;
+        }
 
-      console.log(`[DEBUG] 开始获取 ${uids.length} 封邮件的内容`);
-      const fetch = this.imap!.fetch(uids, {
+        if (!this.imap) {
+          reject(new Error('IMAP连接未建立'));
+          return;
+        }
+
+        console.log(`[DEBUG] 开始获取 ${uids.length} 封邮件的内容`);
+        const fetch = this.imap!.fetch(uids, {
         bodies: '',
         struct: false,
       });
@@ -307,6 +345,9 @@ export class EmailService {
         console.log('[DEBUG] Fetch错误:', err);
         reject(err);
       });
+      } catch (error) {
+        reject(error);
+      }
     });
   }
 
