@@ -8,31 +8,19 @@ export interface EmailSearchOptions {
 
 export interface EmailMessage {
   uid: number;
-  messageId: string;
   subject: string;
   from: string;
-  to: string[];
   date: Date;
   folder: string;
   flags: string[];
-  snippet?: string;
 }
 
 export interface EmailContent {
-  messageId: string;
   uid: number;
-  subject: string;
   from: string;
-  to: string[];
-  cc?: string[];
-  bcc?: string[];
-  date: Date;
+  subject: string;
+  textSummary: string; // 文本内容摘要（前200字）
   folder: string;
-  flags: string[];
-  textContent?: string;
-  htmlContent?: string;
-  attachments?: EmailAttachment[];
-  headers: Record<string, string>;
 }
 
 export interface EmailAttachment {

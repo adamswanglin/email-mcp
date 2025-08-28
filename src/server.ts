@@ -9,6 +9,7 @@ import {
 import { EmailService } from './email-service.js';
 import { EmailSearchOptions, IMAPConfig } from './types.js';
 
+
 export class EmailMCPServer {
   private server: Server;
   private emailService: EmailService | null = null;
@@ -76,22 +77,6 @@ export class EmailMCPServer {
             inputSchema: {
               type: 'object',
               properties: {},
-            },
-          },
-          {
-            name: 'get_email_contents',
-            description: '根据消息ID批量获取邮件的完整内容，包括文本、HTML内容和头信息',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                messageIds: {
-                  type: 'array',
-                  items: { type: 'string' },
-                  description: '要获取内容的邮件消息ID列表',
-                  minItems: 1,
-                },
-              },
-              required: ['messageIds'],
             },
           },
           {
@@ -230,32 +215,6 @@ export class EmailMCPServer {
             };
           }
 
-          case 'get_email_contents': {
-            if (!args?.messageIds || !Array.isArray(args.messageIds)) {
-              throw new McpError(
-                ErrorCode.InvalidParams,
-                '必须提供messageIds数组参数'
-              );
-            }
-
-            const messageIds = args.messageIds as string[];
-            const contents = await this.emailService!.getEmailContentsByMessageIds(messageIds);
-            
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: JSON.stringify({
-                    summary: `成功获取 ${contents.length} 封邮件的内容（共查询 ${messageIds.length} 个消息ID）`,
-                    requestedCount: messageIds.length,
-                    foundCount: contents.length,
-                    contents,
-                  }, null, 2),
-                },
-              ],
-            };
-          }
-
           case 'get_email_contents_by_uids': {
             if (!args?.uids || !Array.isArray(args.uids)) {
               throw new McpError(
@@ -285,7 +244,6 @@ export class EmailMCPServer {
                     summary: `成功获取 ${contents.length} 封邮件的内容（共查询 ${uids.length} 个UID）`,
                     requestedCount: uids.length,
                     foundCount: contents.length,
-                    performance: '使用UID直接获取，性能更优',
                     contents,
                   }, null, 2),
                 },
@@ -412,6 +370,6 @@ export class EmailMCPServer {
   async run() {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    console.error('邮件MCP服务器已启动');
+    console.log('[INFO] 邮件MCP服务器已启动');
   }
 }

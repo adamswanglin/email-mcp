@@ -1,5 +1,10 @@
 #!/usr/bin/env node
 
+// 在开发模式下启用MCP日志
+if (process.env.NODE_ENV !== 'production') {
+  await import('mcps-logger/console');
+}
+
 import dotenv from 'dotenv';
 import { EmailMCPServer } from './server.js';
 

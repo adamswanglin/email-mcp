@@ -25,50 +25,27 @@
 
 ### 快速开始
 
-1. **克隆或下载项目**
-   ```bash
-   git clone https://github.com/adamswanglin/email-mcp.git
-   cd email-mcp
-   ```
+MCP 配置
 
-2. **安装依赖**
-   ```bash
-   npm install
-   ```
-
-3. **配置环境变量**
-   
-   复制示例配置文件：
-   ```bash
-   cp env.example .env
-   ```
-   
-   编辑 `.env` 文件，填入您的IMAP配置：
-   ```env
-   # IMAP服务器配置
-   IMAP_HOST=imap.gmail.com
-   IMAP_PORT=993
-   IMAP_SECURE=true
-   
-   # 邮箱账户信息
-   EMAIL_USER=your.email@gmail.com
-   EMAIL_PASSWORD=your_app_password
-   
-   # 可选配置
-   IMAP_TLS_OPTIONS={}
-   ```
-
-4. **构建项目**
-   ```bash
-   npm run build
-   ```
-
-5. **运行服务**
-   ```bash
-   npm start
-   # 或者使用npx
-   npx email-mcp
-   ```
+```json
+{
+  "command": "npx",
+  "args": [
+    "-y",
+    "@adamswanglin/email-mcp"
+  ],
+  "env": {
+    "IMAP_HOST": "imap.example.com",
+    "IMAP_PORT": "993",
+    "IMAP_SECURE": "true",
+    "EMAIL_USER": "user@example.com",
+    "EMAIL_PASSWORD": "REPLACE_ME"
+  },
+  "isActive": true,
+  "key": "email",
+  "type": "local"
+}
+```
 
 ### NPX 直接执行
 
@@ -85,6 +62,7 @@ IMAP_HOST=imap.gmail.com EMAIL_USER=your@email.com EMAIL_PASSWORD=password npx @
 ## 常见IMAP服务器配置
 
 ### Gmail
+
 ```env
 IMAP_HOST=imap.gmail.com
 IMAP_PORT=993
@@ -92,6 +70,7 @@ IMAP_SECURE=true
 ```
 
 ### Outlook/Hotmail
+
 ```env
 IMAP_HOST=outlook.office365.com
 IMAP_PORT=993
@@ -99,6 +78,7 @@ IMAP_SECURE=true
 ```
 
 ### QQ邮箱
+
 ```env
 IMAP_HOST=imap.qq.com
 IMAP_PORT=993
@@ -106,6 +86,7 @@ IMAP_SECURE=true
 ```
 
 ### 163邮箱
+
 ```env
 IMAP_HOST=imap.163.com
 IMAP_PORT=993
@@ -117,16 +98,19 @@ IMAP_SECURE=true
 本服务提供以下MCP工具：
 
 ### 1. search_emails
+
 搜索邮件，支持多种过滤条件。
 
 **参数：**
+
 - `folders` (可选): 要搜索的文件夹列表
 - `since` (可选): 搜索此日期之后的邮件 (YYYY-MM-DD)
-- `before` (可选): 搜索此日期之前的邮件 (YYYY-MM-DD)  
+- `before` (可选): 搜索此日期之前的邮件 (YYYY-MM-DD)
 - `keywords` (可选): 关键词列表（在主题和正文中搜索）
 - `limit` (可选): 最大返回数量，默认100
 
 **示例：**
+
 ```json
 {
   "folders": ["INBOX", "Sent"],
@@ -137,19 +121,23 @@ IMAP_SECURE=true
 ```
 
 ### 2. get_email_contents
+
 根据消息ID批量获取邮件的完整内容。
 
 **参数：**
+
 - `messageIds` (必需): 消息ID数组
 
 **返回内容：**
-- 邮件完整头信息
-- 文本内容（textContent）
-- HTML内容（htmlContent）  
-- 附件信息
-- 邮件标志和文件夹信息
+
+- 发件人（from）
+- 邮件主题（subject）
+- 文本内容摘要（textSummary，前200字符，自动清理HTML标签和签名）
+- 邮件文件夹（folder）
+- 邮件UID（uid）
 
 **示例：**
+
 ```json
 {
   "messageIds": [
@@ -160,17 +148,21 @@ IMAP_SECURE=true
 ```
 
 ### 3. get_email_contents_by_uids 🆕
+
 根据UID批量获取邮件的完整内容，性能更佳。
 
 **参数：**
+
 - `uids` (必需): UID和文件夹对象数组
 
 **性能优势：**
+
 - 直接通过UID获取，无需搜索步骤
 - 单次IMAP请求批量获取多封邮件
 - 按文件夹分组优化处理
 
 **示例：**
+
 ```json
 {
   "uids": [
@@ -184,14 +176,17 @@ IMAP_SECURE=true
 **注意：** UID可以通过 `search_emails` 工具获得，然后用此工具高效获取邮件内容。
 
 ### 4. list_mailboxes
+
 获取所有可用的邮件文件夹列表。
 
 **参数：** 无
 
 ### 5. get_current_date
+
 获取当前日期和时间信息，可用于设置邮件搜索的时间范围。
 
 **参数：**
+
 - `format` (可选): 日期格式
   - `date`: YYYY-MM-DD 格式（默认）
   - `datetime`: YYYY-MM-DD HH:mm:ss 格式
@@ -201,6 +196,7 @@ IMAP_SECURE=true
 - `daysOffset` (可选): 日期偏移天数，正数为未来，负数为过去
 
 **示例：**
+
 ```json
 {
   "format": "date",
@@ -209,11 +205,13 @@ IMAP_SECURE=true
 ```
 
 **用途：**
+
 - 获取今天的日期用于邮件搜索
 - 计算几天前/后的日期
 - 设置邮件搜索的时间范围
 
 ### 6. test_connection
+
 测试IMAP连接是否正常。
 
 **参数：** 无
@@ -233,6 +231,24 @@ npm run build
 npm start
 ```
 
+### 调试日志
+
+本项目集成了 [mcps-logger](https://github.com/mlshv/mcps-logger) 来解决MCP服务器开发中 `console.log`干扰stdio通信的问题。
+
+**使用方法：**
+
+1. **启动日志监听器**（在单独的终端中）：
+
+   ```bash
+   npx mcps-logger
+   ```
+2. **运行MCP服务器**（在另一个终端中）：
+
+   ```bash
+   NODE_ENV=development npm start
+   ```
+3. **查看日志**：所有的调试信息将显示在日志监听器终端中，不会干扰MCP协议通信。
+
 ## 安全注意事项
 
 1. **应用密码**: 对于Gmail等服务，建议使用应用专用密码而不是主密码
@@ -243,36 +259,24 @@ npm start
 ## 故障排除
 
 ### 连接失败
+
 - 检查IMAP服务器地址和端口
 - 确认邮箱已启用IMAP功能
 - 验证用户名和密码/应用密码
 - 检查网络连接和防火墙设置
 
 ### 权限错误
+
 - 对于Gmail，确保启用了"不够安全的应用访问"或使用应用密码
 - 对于企业邮箱，联系管理员确认IMAP访问权限
 
 ### 性能问题
+
 - 减少搜索的文件夹数量
 - 缩小时间范围
 - 降低结果限制数量
 
-## 性能优化建议
-
-### 邮件内容获取性能对比
-
-1. **推荐方式**：使用 `get_email_contents_by_uids`
-   - ✅ 直接通过UID获取，无搜索开销
-   - ✅ 单次IMAP请求批量处理
-   - ✅ 按文件夹自动分组优化
-   - ⚡ 性能提升显著
-
-2. **传统方式**：使用 `get_email_contents`  
-   - ❌ 需要先搜索MessageID
-   - ❌ 每个MessageID单独处理
-   - ❌ 多次IMAP请求
-
-### 最佳实践工作流
+## 最佳实践工作流
 
 ```
 1. 使用 search_emails 获取邮件列表（包含UID）
@@ -284,33 +288,41 @@ npm start
 
 ## 版本历史
 
-### v1.3.0 (最新)
-- 🚀 新增 `get_email_contents_by_uids` 工具，基于UID批量获取邮件内容
-- ⚡ 大幅优化批量邮件获取性能，单次IMAP请求处理多封邮件
-- 🔧 重构邮件内容获取机制，支持按文件夹分组处理
-- 📈 提供性能对比和最佳实践指南
+### v1.5.1 (最新)
+
+- 🔄 **集成mailparser**: 使用专业的mailparser库替代自定义邮件解析逻辑
+- ✨ **简化邮件结构**: 只返回核心信息（发件人、主题、文本摘要）
+- 📝 **智能文本摘要**: 自动提取前200字符，移除HTML标签和签名
+- 🧹 **代码重构**: 移除所有自定义MIME解析代码，提升稳定性
+- 🔧 **向后兼容**: 保留getEmailContentsByMessageIds方法但标记为废弃
+- ⚡ **性能优化**: 使用成熟的解析库，提升解析效率和准确性
 
 ### v1.2.0
+
 - 🆕 新增 `get_current_date` 工具，获取当前日期和时间
 - ⏰ 支持多种日期格式（date, datetime, iso, timestamp）
 - 🌍 支持时区设置和日期偏移计算
 - 📅 便于设置邮件搜索的时间范围
 
 ### v1.1.1
+
 - 📚 更新README文档，添加详细功能说明
 - 🔗 添加GitHub仓库和License信息
 - 📦 完善包发布配置
 
 ### v1.1.0
+
 - 🆕 新增 `get_email_contents` 工具，支持批量获取邮件完整内容
 - ✨ 支持获取邮件的文本和HTML内容
 - 🔧 改进邮件内容解析功能
 
 ### v1.0.1
+
 - 🐛 修复bin路径问题
 - 📦 优化包发布配置
 
 ### v1.0.0
+
 - 🎉 首次发布
 - ✅ 基础邮件搜索功能
 - ✅ 文件夹列表功能
