@@ -39,7 +39,8 @@ MCP 配置
     "IMAP_PORT": "993",
     "IMAP_SECURE": "true",
     "EMAIL_USER": "user@example.com",
-    "EMAIL_PASSWORD": "REPLACE_ME"
+    "EMAIL_PASSWORD": "REPLACE_ME",
+    "NODE_ENV": "production"
   },
   "isActive": true,
   "key": "email",
@@ -289,6 +290,7 @@ npm start
 ## 版本历史
 
 ### v1.5.2 (最新)
+
 - 🐛 **修复IMAP连接问题**: 修复 `list_mailboxes` 等工具的 "Cannot read properties of null" 错误
 - 🔧 **连接状态检查**: 为所有IMAP操作方法添加连接状态检查和自动连接
 - 🛡️ **错误处理增强**: 改进错误处理机制，提供更友好的错误信息
